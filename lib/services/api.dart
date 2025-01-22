@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:my_ai_gateway/models/message.dart';
 import "package:my_ai_gateway/models/model.dart";
-import 'package:my_ai_gateway/models/chatCompletion.dart';
+import 'package:my_ai_gateway/models/chat_completion.dart';
 
 class ApiService {
   final String apiUrl;
@@ -101,7 +102,7 @@ class ApiService {
                 }
               }
             } catch (e) {
-              print('Error parsing streamed data: $e');
+              debugPrint('Error parsing streamed data: $e');
             }
           }
         }

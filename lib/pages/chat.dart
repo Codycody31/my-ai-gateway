@@ -9,8 +9,8 @@ import 'package:my_ai_gateway/pages/settings.dart';
 import 'package:my_ai_gateway/services/api.dart';
 import 'package:my_ai_gateway/models/chat.dart';
 import 'package:my_ai_gateway/services/database.dart';
-import 'package:my_ai_gateway/widgets/collapsibleThought.dart';
-import 'package:my_ai_gateway/pages/modelDetails.dart';
+import 'package:my_ai_gateway/widgets/collapsible_thought.dart';
+import 'package:my_ai_gateway/pages/model_details.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -70,6 +70,7 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           _providers = providers;
         });
+        debugPrint('Providers fetched');
       }).catchError((e) {
         debugPrint('Error fetching providers: $e');
       });
@@ -77,8 +78,10 @@ class _ChatPageState extends State<ChatPage> {
 // Fetch the last opened chat
       DatabaseService.instance.getLastOpenedChat().then((chatId) async {
         if (chatId != 0) {
+          debugPrint('Last opened chat found: $chatId');
           await _switchChat(chatId!);
         } else {
+          debugPrint('No last opened chat found');
           // Get the default provider: default_provider_id
           final defaultProviderId =
               await DatabaseService.instance.getConfig('default_provider_id');
@@ -99,6 +102,7 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           _chats = chats;
         });
+        debugPrint('Chats fetched');
       }).catchError((e) {
         debugPrint('Error fetching chats: $e');
       });
@@ -343,7 +347,8 @@ class _ChatPageState extends State<ChatPage> {
         // Use StringBuffer for efficient concatenation
         StringBuffer contentBuffer = StringBuffer();
 
-        debugPrint('Fetching completions for chat $_selectedChat through stream');
+        debugPrint(
+            'Fetching completions for chat $_selectedChat through stream');
 
         // Stream tokens and update the assistant message
         final stream = llmApi.fetchStreamedTokens(_selectedModel, _messages);
@@ -542,13 +547,11 @@ class _ChatPageState extends State<ChatPage> {
         }
       }
 
-      // Combine messages into a single prompt
-      final prompt = messages.map((m) => m.content).join('\n');
-
       // Send the prompt to the AI
       final response = await llmApi.fetchCompletions(
         _selectedModel,
         [
+          ...messages,
           Message(
               id: 0,
               isUser: 1,
@@ -557,7 +560,7 @@ class _ChatPageState extends State<ChatPage> {
               modelName: "",
               createdAt: "",
               content:
-                  "Summarize the following chat in the least amount of words possible. Use a maximum of 10 words, do not use any styling/markdown, or any other formatting other than the words needed. Only output the chat title, nothing else. Chat:\n$prompt")
+                  "Summarize the following chat in the least amount of words possible. Use a maximum of 10 words, do not use any styling/markdown, or any other formatting other than the words needed. Only output the chat title, nothing else.")
         ],
       );
 
@@ -619,7 +622,7 @@ class _ChatPageState extends State<ChatPage> {
         decoration: BoxDecoration(
           color: isUserMessage
               ? colorScheme.primaryContainer
-              : colorScheme.surfaceVariant,
+              : colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12.0),
         ),
         child: Column(
@@ -672,7 +675,7 @@ class _ChatPageState extends State<ChatPage> {
                 child: Text(suggestion),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -920,7 +923,8 @@ class _ChatPageState extends State<ChatPage> {
                           Expanded(
                             child: TextFormField(
                               controller: _controller,
-                              maxLines: null,
+                              minLines: 1,
+                              maxLines: 8,
                               decoration: InputDecoration(
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(45.0),

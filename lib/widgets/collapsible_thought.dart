@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class CollapsibleThought extends StatelessWidget {
   final String thought;
 
-  const CollapsibleThought({required this.thought, Key? key}) : super(key: key);
+  const CollapsibleThought({required this.thought, super.key});
 
   @override
   Widget build(BuildContext context) {

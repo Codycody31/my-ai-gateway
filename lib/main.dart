@@ -13,9 +13,11 @@ Future<void> main() async {
   await windowManager.ensureInitialized();
 
   if (Platform.isWindows || Platform.isLinux) {
+    debugPrint('Changing databaseFactory to ffi');
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
 
+    debugPrint('Setting minimum and maximum window size');
     WindowManager.instance.setMinimumSize(const Size(600, 600));
     // WindowManager.instance.setMaximumSize(const Size(1200, 600));
   }
