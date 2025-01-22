@@ -102,8 +102,6 @@ class _ChatPageState extends State<ChatPage> {
       }).catchError((e) {
         debugPrint('Error fetching chats: $e');
       });
-
-      debugPrint('Provider: $_selectedProvider\nModel: $_selectedModel');
     } catch (e) {
       debugPrint('Error re-fetching data: $e');
     }
@@ -133,6 +131,7 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           _models = models.map((model) => model.id).toList();
         });
+        debugPrint('Models fetched for provider $providerId');
       }
     } catch (e) {
       debugPrint('Error fetching models for provider $providerId: $e');
@@ -151,6 +150,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _models = models.map((model) => model.id).toList();
       });
+      debugPrint('Models refetched');
     } catch (e) {
       debugPrint('Error fetching models: $e');
     }
@@ -175,6 +175,8 @@ class _ChatPageState extends State<ChatPage> {
       _selectedModel = provider?.defaultModel ?? "";
       _messages = [];
     });
+
+    debugPrint('Chat closed');
   }
 
   Future<void> _createNewChat() async {
@@ -192,6 +194,8 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {
       _chats.add(chat);
     });
+
+    debugPrint('New chat created: $chatId');
 
     await _switchChat(chatId);
   }
@@ -232,12 +236,16 @@ class _ChatPageState extends State<ChatPage> {
 
     // Save the last opened chat
     await DatabaseService.instance.setLastOpenedChat(_selectedChat);
+
+    debugPrint('Chat switched to $id');
   }
 
   Future<void> _switchProvider(int providerId) async {
     setState(() {
       _selectedProvider = providerId;
     });
+
+    debugPrint('Provider switched to $providerId');
 
     // Fetch models for the provider
     await _fetchProviderModels(providerId);
@@ -258,6 +266,8 @@ class _ChatPageState extends State<ChatPage> {
     if (_selectedChat != 0) {
       await DatabaseService.instance.updateChatModelName(_selectedChat, model);
     }
+
+    debugPrint('Model switched to $model');
   }
 
   Future<void> _sendMessage() async {
@@ -333,6 +343,8 @@ class _ChatPageState extends State<ChatPage> {
         // Use StringBuffer for efficient concatenation
         StringBuffer contentBuffer = StringBuffer();
 
+        debugPrint('Fetching completions for chat $_selectedChat through stream');
+
         // Stream tokens and update the assistant message
         final stream = llmApi.fetchStreamedTokens(_selectedModel, _messages);
         streamSubscription = stream.listen(
@@ -352,6 +364,7 @@ class _ChatPageState extends State<ChatPage> {
           },
           onDone: () async {
             if (firstTime) {
+              debugPrint('Summarizing chat $_selectedChat');
               var summary = await _summarizeChat(_selectedChat);
               if (summary != null) {
                 await DatabaseService.instance
@@ -361,8 +374,12 @@ class _ChatPageState extends State<ChatPage> {
                   _chats.firstWhere((chat) => chat.id == _selectedChat).name =
                       summary;
                 });
+
+                debugPrint('Chat $_selectedChat renamed to $summary');
               }
             }
+
+            debugPrint('Stream done for chat $_selectedChat');
 
             setState(() {
               _sendingMessage = false;
@@ -381,6 +398,7 @@ class _ChatPageState extends State<ChatPage> {
           },
         );
       } else {
+        debugPrint('Fetching completions for chat $_selectedChat');
         var response = await llmApi.fetchCompletions(_selectedModel, _messages);
 
         var messageAssistant = Message(
@@ -403,6 +421,7 @@ class _ChatPageState extends State<ChatPage> {
         });
 
         if (firstTime) {
+          debugPrint('Summarizing chat $_selectedChat');
           var summary = await _summarizeChat(_selectedChat);
           if (summary != null) {
             await DatabaseService.instance
@@ -412,6 +431,8 @@ class _ChatPageState extends State<ChatPage> {
               _chats.firstWhere((chat) => chat.id == _selectedChat).name =
                   summary;
             });
+
+            debugPrint('Chat $_selectedChat renamed to $summary');
           }
         }
 
@@ -474,6 +495,8 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         chat.name = newName;
       });
+
+      debugPrint('Chat $chatId renamed to $newName');
     }
   }
 
@@ -563,6 +586,8 @@ class _ChatPageState extends State<ChatPage> {
         _messages = [];
       });
     }
+
+    debugPrint('Chat $id deleted');
   }
 
   List<String> _extractThoughts(String content) {
@@ -664,6 +689,7 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {
       _sendingMessage = false;
     });
+    debugPrint('Request canceled');
   }
 
   // UI for canceling the request
@@ -740,11 +766,6 @@ class _ChatPageState extends State<ChatPage> {
                             .type);
                   }),
                 );
-              } else if (_models.contains(value)) {
-                setState(() {
-                  _selectedModel = value;
-                });
-                debugPrint('Model switched to $value');
               } else if (value.contains('provider_')) {
                 final providerId = int.parse(value.split('_')[1]);
                 _switchProvider(providerId);
@@ -813,12 +834,6 @@ class _ChatPageState extends State<ChatPage> {
                       ),
                     ],
                   ),
-                  onTap: () {
-                    _fetchProviderModels(provider.id);
-                    setState(() {
-                      _selectedProvider = provider.id;
-                    });
-                  },
                 ),
               ),
               const PopupMenuDivider(),

@@ -5,12 +5,19 @@ import 'package:my_ai_gateway/pages/chat.dart';
 import 'package:my_ai_gateway/services/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:window_manager/window_manager.dart';
 
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
   if (Platform.isWindows || Platform.isLinux) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+
+    WindowManager.instance.setMinimumSize(const Size(600, 600));
+    // WindowManager.instance.setMaximumSize(const Size(1200, 600));
   }
   runApp(
     ChangeNotifierProvider(
