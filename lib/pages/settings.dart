@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_settings_ui/flutter_settings_ui.dart';
@@ -149,21 +150,20 @@ class _SettingsPageState extends State<SettingsPage> {
                 onPressed: (context) {
                   showAboutDialog(
                     context: context,
-                    applicationName: _packageInfo.appName,
+                    applicationName: "My AI Gateway",
                     applicationIcon: Image.asset(
                       'assets/icon/icon.png',
                       height: 40,
                     ),
                     children: <Widget>[
-                      _infoTile('Build', "v${_packageInfo.version}b${_packageInfo.buildNumber} - ${Platform.isIOS ? 'iOS' : 'Android'}"),
+                      _infoTile('Build',
+                          "v${_packageInfo.version}-${_packageInfo.buildNumber} (${Platform.operatingSystem})"),
                       ListTile(
                         title: const Text('GitHub'),
                         subtitle: Text(_githubLink),
                         onTap: () async {
-                          if (await canLaunchUrl(Uri.parse(
-                              _githubLink))) {
-                            await launchUrl(Uri.parse(
-                                _githubLink));
+                          if (await canLaunchUrl(Uri.parse(_githubLink))) {
+                            await launchUrl(Uri.parse(_githubLink));
                           }
                         },
                         onLongPress: () {
@@ -172,12 +172,16 @@ class _SettingsPageState extends State<SettingsPage> {
                           ));
                         },
                       ),
-                      _infoTile('Package name', _packageInfo.packageName),
-                      _infoTile('Build signature', _packageInfo.buildSignature),
-                      _infoTile(
-                        'Installer store',
-                        _packageInfo.installerStore ?? 'not available',
-                      ),
+                      if (Platform.isAndroid || Platform.isIOS)
+                        _infoTile('Package name', _packageInfo.packageName),
+                      if (Platform.isAndroid || Platform.isIOS)
+                        _infoTile(
+                            'Build signature', _packageInfo.buildSignature),
+                      if (Platform.isAndroid || Platform.isIOS)
+                        _infoTile(
+                          'Installer store',
+                          _packageInfo.installerStore ?? 'not available',
+                        ),
                     ],
                   );
                 },
