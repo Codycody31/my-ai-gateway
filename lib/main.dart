@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
 
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -29,6 +28,7 @@ Future<void> main() async {
     WindowManager.instance.setMinimumSize(const Size(600, 600));
     // WindowManager.instance.setMaximumSize(const Size(1200, 600));
   }
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
@@ -53,5 +53,3 @@ class MyAIGatewayApp extends StatelessWidget {
     );
   }
 }
-
-

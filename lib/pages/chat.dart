@@ -44,7 +44,7 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
   bool _showScrollDownButton = false;
 
-  ApiService llmApi = ApiService(apiUrl: '', authToken: "");
+  ApiService llmApi = ApiService(apiUrl: '', authToken: "", apiType: "");
 
   @override
   void initState() {
@@ -129,11 +129,13 @@ class _ChatPageState extends State<ChatPage> {
       final provider =
           await DatabaseService.instance.getProviderById(providerId);
       if (provider != null) {
-        llmApi =
-            ApiService(apiUrl: provider.url, authToken: provider.authToken);
+        llmApi = ApiService(
+            apiUrl: provider.url,
+            authToken: provider.authToken,
+            apiType: provider.apiType);
         final models = await llmApi.fetchModels();
         setState(() {
-          _models = models.map((model) => model.id).toList();
+          _models = models;
         });
         debugPrint('Models fetched for provider $providerId');
       }
@@ -161,7 +163,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final models = await llmApi.fetchModels();
       setState(() {
-        _models = models.map((model) => model.id).toList();
+        _models = models;
       });
       debugPrint('Models refetched');
     } catch (e) {
@@ -339,6 +341,16 @@ class _ChatPageState extends State<ChatPage> {
         _controller.clear();
       });
 
+      // Update the chats model name if it is different than the selected model
+      var chat = _chats.firstWhere((chat) => chat.id == _selectedChat);
+      if (chat.modelName != _selectedModel) {
+        await DatabaseService.instance
+            .updateChatModelName(_selectedChat, _selectedModel);
+        setState(() {
+          chat.modelName = _selectedModel;
+        });
+      }
+
       var streamOutput =
           await DatabaseService.instance.getConfig('stream_output');
 
@@ -386,6 +398,11 @@ class _ChatPageState extends State<ChatPage> {
             );
           },
           onDone: () async {
+            debugPrint('Stream done for chat $_selectedChat');
+            setState(() {
+              _sendingMessage = false;
+            });
+
             if (firstTime) {
               debugPrint('Summarizing chat $_selectedChat');
               var summary = await _summarizeChat(_selectedChat);
@@ -401,12 +418,6 @@ class _ChatPageState extends State<ChatPage> {
                 debugPrint('Chat $_selectedChat renamed to $summary');
               }
             }
-
-            debugPrint('Stream done for chat $_selectedChat');
-
-            setState(() {
-              _sendingMessage = false;
-            });
           },
           onError: (error) {
             debugPrint('Stream error: $error');
@@ -434,13 +445,13 @@ class _ChatPageState extends State<ChatPage> {
           providerId: _selectedProvider,
           modelName: _selectedModel,
           isUser: 0,
-          content: response.choices[0].message.content,
+          content: response,
           createdAt: DateTime.now().toString(),
         );
 
         try {
           var messageAssistantId =
-          await DatabaseService.instance.createMessage(messageAssistant);
+              await DatabaseService.instance.createMessage(messageAssistant);
           messageAssistant.id = messageAssistantId;
         } catch (e) {
           debugPrint('Error creating assistant message: $e');
@@ -461,6 +472,10 @@ class _ChatPageState extends State<ChatPage> {
           );
         });
 
+        setState(() {
+          _sendingMessage = false;
+        });
+
         if (firstTime) {
           debugPrint('Summarizing chat $_selectedChat');
           var summary = await _summarizeChat(_selectedChat);
@@ -476,10 +491,6 @@ class _ChatPageState extends State<ChatPage> {
             debugPrint('Chat $_selectedChat renamed to $summary');
           }
         }
-
-        setState(() {
-          _sendingMessage = false;
-        });
       }
     }
   }
@@ -600,7 +611,7 @@ class _ChatPageState extends State<ChatPage> {
         ],
       );
 
-      return _removeThinkTags(response.choices[0].message.content.trim());
+      return _removeThinkTags(response.trim());
     } catch (e) {
       debugPrint('Error summarizing chat: $e');
       return null;
@@ -620,10 +631,7 @@ class _ChatPageState extends State<ChatPage> {
 
     // Clear messages if the deleted chat is the selected chat
     if (_selectedChat == id) {
-      setState(() {
-        _selectedChat = 0;
-        _messages = [];
-      });
+      await _closeChat();
     }
 
     debugPrint('Chat $id deleted');
@@ -639,7 +647,8 @@ class _ChatPageState extends State<ChatPage> {
     // Handle case where there is an unmatched <think> tag
     final unmatchedThinkIndex = content.indexOf('<think>');
     if (unmatchedThinkIndex != -1 && !content.contains('</think>')) {
-      final unmatchedThought = content.substring(unmatchedThinkIndex + 7).trim();
+      final unmatchedThought =
+          content.substring(unmatchedThinkIndex + 7).trim();
       thoughts.add(unmatchedThought);
     }
 
@@ -1095,11 +1104,24 @@ class _ChatPageState extends State<ChatPage> {
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Provider: ${_providers.firstWhere((provider) => provider.id == chat.providerId, orElse: () => Provider(id: 0, name: 'Unknown', url: '', authToken: '', type: 'unknown', apiType: 'unknown')).name}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          Text(
+                            'Model: ${chat.modelName.isEmpty ? "None" : chat.modelName}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
                       tileColor: isSelected
                           ? Theme.of(context).colorScheme.primaryContainer
                           : Colors.transparent,
                       onTap: () {
-                        _switchChat(_chats[index].id);
+                        _switchChat(chat.id);
                         Navigator.pop(context);
                       },
                     ),

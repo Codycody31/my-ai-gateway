@@ -4,6 +4,7 @@ class Provider {
   final String url;
   final String authToken;
   final String type;
+  final String apiType;
   final String? defaultModel;
 
   Provider({
@@ -12,6 +13,7 @@ class Provider {
     required this.url,
     required this.authToken,
     required this.type,
+    required this.apiType,
     this.defaultModel,
   });
 
@@ -22,6 +24,7 @@ class Provider {
       'url': url,
       'auth_token': authToken,
       'type': type,
+      'api_type': apiType,
       'default_model': defaultModel,
     };
   }
@@ -33,6 +36,7 @@ class Provider {
       url: json['url'] as String,
       authToken: json['auth_token'] as String,
       type: json['type'] as String,
+      apiType: json['api_type'] as String,
       defaultModel: json['default_model'] as String?,
     );
   }
@@ -43,6 +47,7 @@ class Provider {
     String? url,
     String? authToken,
     String? type,
+    String? apiType,
     String? defaultModel,
   }) {
     return Provider(
@@ -51,6 +56,7 @@ class Provider {
       url: url ?? this.url,
       authToken: authToken ?? this.authToken,
       type: type ?? this.type,
+      apiType: apiType ?? this.apiType,
       defaultModel: defaultModel ?? this.defaultModel,
     );
   }

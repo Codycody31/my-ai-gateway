@@ -1,10 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_settings_ui/flutter_settings_ui.dart';
-import 'package:my_ai_gateway/models/model.dart';
 import 'package:provider/provider.dart' as pkg_provider;
 import 'package:url_launcher/url_launcher.dart';
 import '../models/provider.dart';
@@ -124,27 +122,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 onToggle: (value) => _setStreamOutput(value ? 1 : 0),
               ),
               SettingsTile(
-                title: const Text('Reset Database'),
-                leading: const Icon(Icons.delete),
-                onPressed: (context) async {
-                  final confirmed = await _showConfirmationDialog(
-                    context,
-                    'Reset Database',
-                    'This will delete all data. Are you sure you want to proceed?',
-                  );
-
-                  if (confirmed) {
-                    await DatabaseService.instance.resetDatabase();
-                    await _loadProviders();
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Database reset successfully')),
-                    );
-                  }
-                },
-              ),
-              SettingsTile(
                 title: const Text('About'),
                 leading: const Icon(Icons.info),
                 onPressed: (context) {
@@ -168,7 +145,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         },
                         onLongPress: () {
                           Clipboard.setData(ClipboardData(
-                            text: "https://github.com/codycody31/my-ai-gateway",
+                            text: _githubLink,
                           ));
                         },
                       ),
@@ -184,6 +161,39 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                     ],
                   );
+                },
+              ),
+              SettingsTile(
+                title: const Text('Reset Database'),
+                leading: const Icon(Icons.delete_forever),
+                onPressed: (context) async {
+                  final shouldReset = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Reset Database'),
+                      content: const Text(
+                          'Are you sure you want to reset the database? All data will be lost.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Reset'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (shouldReset == true) {
+                    await DatabaseService.instance.resetDatabase();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Database reset successfully'),
+                      ),
+                    );
+                  }
                 },
               ),
             ],
@@ -266,6 +276,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final urlController = TextEditingController();
     final authTokenController = TextEditingController();
     String selectedType = 'local';
+    String selectedApiType = 'ollama';
 
     return showDialog<Provider>(
       context: context,
@@ -307,6 +318,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged: (value) => selectedType = value ?? 'local',
                     decoration: const InputDecoration(labelText: 'Type'),
                   ),
+                  DropdownButtonFormField<String>(
+                    value: selectedApiType,
+                    items: [
+                      DropdownMenuItem(
+                          value: 'ollama', child: const Text('Ollama')),
+                      DropdownMenuItem(
+                          value: 'openai', child: const Text('OpenAI')),
+                    ],
+                    onChanged: (value) => selectedApiType = value ?? 'ollama',
+                    decoration: const InputDecoration(labelText: 'Api Type'),
+                  ),
                 ],
               ))),
           actions: [
@@ -322,6 +344,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   url: urlController.text,
                   authToken: authTokenController.text,
                   type: selectedType,
+                  apiType: selectedApiType,
                 );
                 Navigator.pop(context, provider);
               },
@@ -339,6 +362,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final urlController = TextEditingController(text: provider.url);
     final authTokenController = TextEditingController(text: provider.authToken);
     String selectedType = provider.type;
+    String selectedApiType = provider.apiType;
     String? selectedModel = provider.defaultModel;
     List<String> models = [];
 
@@ -346,8 +370,8 @@ class _SettingsPageState extends State<SettingsPage> {
     Future<List<String>> fetchModels() async {
       if (urlController.text.isNotEmpty) {
         ApiService llmApi = ApiService(
-            apiUrl: urlController.text, authToken: authTokenController.text);
-        List<Model> m;
+            apiUrl: urlController.text, authToken: authTokenController.text, apiType: selectedApiType);
+        List<String> m;
 
         try {
           m = await llmApi.fetchModels();
@@ -355,7 +379,7 @@ class _SettingsPageState extends State<SettingsPage> {
           return [];
         }
 
-        return m.map((model) => model.id).toList();
+        return m;
       } else {
         return [];
       }
@@ -454,6 +478,19 @@ class _SettingsPageState extends State<SettingsPage> {
                             decoration:
                                 const InputDecoration(labelText: 'Type'),
                           ),
+                          DropdownButtonFormField<String>(
+                            value: selectedApiType,
+                            items: [
+                              DropdownMenuItem(
+                                  value: 'ollama', child: const Text('Ollama')),
+                              DropdownMenuItem(
+                                  value: 'openai', child: const Text('OpenAI')),
+                            ],
+                            onChanged: (value) =>
+                                selectedApiType = value ?? 'ollama',
+                            decoration:
+                                const InputDecoration(labelText: 'Api Type'),
+                          ),
                           if (models.isNotEmpty)
                             SizedBox(
                               width: MediaQuery.of(context).size.width *
@@ -510,6 +547,11 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _createProvider(Provider provider) async {
     final providerId = await DatabaseService.instance.createProvider(provider);
     final newProvider = provider.copyWith(id: providerId);
+
+    // If the provider is the first one, set it as the default
+    if (_providers.isEmpty) {
+      await _setDefaultProvider(providerId);
+    }
 
     setState(() {
       _providers.add(newProvider);

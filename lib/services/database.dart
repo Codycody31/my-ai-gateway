@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:my_ai_gateway/models/chat.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -14,40 +15,52 @@ class DatabaseService {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('my_ai_gateway.db');
+    _database = await initDatabase('my_ai_gateway.db');
     return _database!;
   }
 
-  Future<Database> _initDB(String filePath) async {
+  // I use a map for more readability, the key represents the version of the db
+  Map<int, String> migrationScripts = {
+    1: 'CREATE TABLE providers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, url TEXT, auth_token TEXT, type TEXT, api_type TEXT, default_model TEXT);',
+    2: 'CREATE TABLE chats (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, provider_id INTEGER, model_name TEXT, created_at TEXT);',
+    3: 'CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, is_user INTEGER, provider_id INTEGER, model_name TEXT, created_at TEXT, content TEXT);',
+    4: 'CREATE TABLE config (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT UNIQUE, value TEXT);',
+  };
+
+  Future<Database> initDatabase(String filePath) async {
+    int nbrMigrationScripts = migrationScripts.length;
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
     return await openDatabase(
       path,
-      version: 2,
-      onCreate: _createDB,
+      version: nbrMigrationScripts,
+      onCreate: (Database db, int version) async {
+        for (int i = 1; i <= nbrMigrationScripts; i++) {
+          await db.execute(migrationScripts[i]!);
+          debugPrint('Migration script $i executed');
+        }
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        for (int i = oldVersion + 1; i <= newVersion; i++) {
+          await db.execute(migrationScripts[i]!);
+          debugPrint('Migration script $i executed');
+        }
+      },
     );
   }
 
-
-  Future _createDB(Database db, int version) async {
-    await db.execute('CREATE TABLE providers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, url TEXT, auth_token TEXT, type TEXT, default_model TEXT);');
-    await db.execute('CREATE TABLE chats (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, provider_id INTEGER, model_name TEXT, created_at TEXT);');
-    await db.execute('CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, is_user INTEGER, provider_id INTEGER, model_name TEXT, created_at TEXT, content TEXT);');
-    await db.execute('CREATE TABLE config (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT UNIQUE, value TEXT);');
+  String databaseLocation() {
+    return _database!.path;
   }
-
-  // TODO: Add type to provider
-  // If openai, or custom, or other
-  // TODO: add config table to track last used provider and model
-  // along with the last opened chat
 
   // Create provider
   Future<int> createProvider(Provider provider) async {
     final db = await instance.database;
     var p = provider.toMap();
     p['id'] = null;
-    return await db.insert('providers', p, conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert('providers', p,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // Read all providers
@@ -60,7 +73,8 @@ class DatabaseService {
   // Get provider by ID
   Future<Provider?> getProviderById(int id) async {
     final db = await instance.database;
-    final result = await db.query('providers', where: 'id = ?', whereArgs: [id]);
+    final result =
+        await db.query('providers', where: 'id = ?', whereArgs: [id]);
     return result.isNotEmpty ? Provider.fromJson(result.first) : null;
   }
 
@@ -81,13 +95,13 @@ class DatabaseService {
     return await db.delete('providers', where: 'id = ?', whereArgs: [id]);
   }
 
-
   // Create chat
   Future<int> createChat(Chat chat) async {
     final db = await instance.database;
     var c = chat.toMap();
     c['id'] = null;
-    return await db.insert('chats', c, conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert('chats', c,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // Read all chats
@@ -135,7 +149,8 @@ class DatabaseService {
     final db = await instance.database;
     var m = message.toMap();
     m['id'] = null;
-    return await db.insert('messages', m, conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert('messages', m,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // Read all messages
@@ -155,7 +170,8 @@ class DatabaseService {
   // Get messages by chat ID
   Future<List<Message>> getMessagesByChatId(int chatId) async {
     final db = await instance.database;
-    final result = await db.query('messages', where: 'chat_id = ?', whereArgs: [chatId]);
+    final result =
+        await db.query('messages', where: 'chat_id = ?', whereArgs: [chatId]);
     return result.map((json) => Message.fromJson(json)).toList();
   }
 
@@ -178,7 +194,8 @@ class DatabaseService {
   // Delete all messages by chat ID
   Future<int> deleteMessagesByChatId(int chatId) async {
     final db = await instance.database;
-    return await db.delete('messages', where: 'chat_id = ?', whereArgs: [chatId]);
+    return await db
+        .delete('messages', where: 'chat_id = ?', whereArgs: [chatId]);
   }
 
   Future<void> setConfig(String key, String value) async {
@@ -210,21 +227,22 @@ class DatabaseService {
     return chatId != null ? int.parse(chatId) : null;
   }
 
-  // Reset database
+  // Reset the entire database
   Future<void> resetDatabase() async {
-    final db = await instance.database;
-    await db.execute('DROP TABLE IF EXISTS providers');
-    await db.execute('DROP TABLE IF EXISTS chats');
-    await db.execute('DROP TABLE IF EXISTS messages');
-    await db.execute('DROP TABLE IF EXISTS config');
-    await _createDB(db, 1);
-  }
-
-  // Delete database
-  deleteDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'my_ai_gateway.db');
-    databaseFactory.deleteDatabase(path);
-  }
 
+    // Close the database before deleting
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+
+    // Delete the database file
+    await deleteDatabase(path);
+
+    // Reinitialize the database
+    _database = await initDatabase('my_ai_gateway.db');
+    debugPrint('Database reset successfully');
+  }
 }
