@@ -34,8 +34,13 @@ class DatabaseService {
     final dbPath = await getDatabasesPath();
     var path = join(dbPath, filePath);
 
-    if (Platform.isLinux) {
+    // TODO: If in development, ie: developer is working the app, use the default .dart_tool path
+    if (Platform.isLinux || Platform.isMacOS) {
       final homeDir = Platform.environment['HOME'];
+      path = join(homeDir!, '.myaigateway', filePath);
+    }
+    if (Platform.isWindows) {
+      final homeDir = Platform.environment['USERPROFILE'];
       path = join(homeDir!, '.myaigateway', filePath);
     }
 
