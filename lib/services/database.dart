@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:my_ai_gateway/models/chat.dart';
 import 'package:sqflite/sqflite.dart';
@@ -30,7 +32,14 @@ class DatabaseService {
   Future<Database> initDatabase(String filePath) async {
     int nbrMigrationScripts = migrationScripts.length;
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
+    var path = join(dbPath, filePath);
+
+    if (Platform.isLinux) {
+      final homeDir = Platform.environment['HOME'];
+      path = join(homeDir!, '.myaigateway', filePath);
+    }
+
+    // TODO: Handle platform-specific database paths, excluding android and IOS
 
     return await openDatabase(
       path,

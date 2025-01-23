@@ -77,9 +77,9 @@ class _ChatPageState extends State<ChatPage> {
 
 // Fetch the last opened chat
       DatabaseService.instance.getLastOpenedChat().then((chatId) async {
-        if (chatId != 0) {
+        if (chatId != null && chatId != 0) {
           debugPrint('Last opened chat found: $chatId');
-          await _switchChat(chatId!);
+          await _switchChat(chatId);
         } else {
           debugPrint('No last opened chat found');
           // Get the default provider: default_provider_id

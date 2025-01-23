@@ -26,7 +26,6 @@ Future<void> main() async {
 
     debugPrint('Setting minimum and maximum window size');
     WindowManager.instance.setMinimumSize(const Size(600, 600));
-    // WindowManager.instance.setMaximumSize(const Size(1200, 600));
   }
 
   runApp(
