@@ -139,6 +139,15 @@ class _ChatPageState extends State<ChatPage> {
       }
     } catch (e) {
       debugPrint('Error fetching models for provider $providerId: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'An unexpected error occurred while fetching models.',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -157,6 +166,15 @@ class _ChatPageState extends State<ChatPage> {
       debugPrint('Models refetched');
     } catch (e) {
       debugPrint('Error fetching models: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'An unexpected error occurred while fetching models.',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -394,7 +412,11 @@ class _ChatPageState extends State<ChatPage> {
             debugPrint('Stream error: $error');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Error during token streaming'),
+                content: Text(
+                  'An unexpected error occurred while streaming tokens.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
               ),
             );
             setState(() {
@@ -415,9 +437,23 @@ class _ChatPageState extends State<ChatPage> {
           content: response.choices[0].message.content,
           createdAt: DateTime.now().toString(),
         );
-        var messageAssistantId =
-            await DatabaseService.instance.createMessage(messageAssistant);
-        messageAssistant.id = messageAssistantId;
+
+        try {
+          var messageAssistantId =
+          await DatabaseService.instance.createMessage(messageAssistant);
+          messageAssistant.id = messageAssistantId;
+        } catch (e) {
+          debugPrint('Error creating assistant message: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'An unexpected error occurred while creating the assistant message.',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
 
         setState(() {
           _messages.add(
@@ -564,7 +600,7 @@ class _ChatPageState extends State<ChatPage> {
         ],
       );
 
-      return response.choices[0].message.content.trim();
+      return _removeThinkTags(response.choices[0].message.content.trim());
     } catch (e) {
       debugPrint('Error summarizing chat: $e');
       return null;
@@ -595,15 +631,32 @@ class _ChatPageState extends State<ChatPage> {
 
   List<String> _extractThoughts(String content) {
     final RegExp thinkTagRegex = RegExp(r'<think>(.*?)</think>', dotAll: true);
-    return thinkTagRegex
+    final thoughts = thinkTagRegex
         .allMatches(content)
         .map((match) => match.group(1)?.trim() ?? "")
         .toList();
+
+    // Handle case where there is an unmatched <think> tag
+    final unmatchedThinkIndex = content.indexOf('<think>');
+    if (unmatchedThinkIndex != -1 && !content.contains('</think>')) {
+      final unmatchedThought = content.substring(unmatchedThinkIndex + 7).trim();
+      thoughts.add(unmatchedThought);
+    }
+
+    return thoughts;
   }
 
   String _removeThinkTags(String content) {
     final RegExp thinkTagRegex = RegExp(r'<think>.*?</think>', dotAll: true);
-    return content.replaceAll(thinkTagRegex, "").trim();
+    content = content.replaceAll(thinkTagRegex, "").trim();
+
+    // Handle case where there is an unmatched <think> tag
+    final unmatchedThinkIndex = content.indexOf('<think>');
+    if (unmatchedThinkIndex != -1) {
+      content = content.substring(0, unmatchedThinkIndex).trim();
+    }
+
+    return content;
   }
 
   Widget _buildChatBubble(Message message, bool isUserMessage) {
@@ -617,7 +670,7 @@ class _ChatPageState extends State<ChatPage> {
     return Align(
       alignment: isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4.0),
+        margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
           color: isUserMessage

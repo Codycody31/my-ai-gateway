@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:my_ai_gateway/pages/chat.dart';
@@ -10,9 +11,16 @@ import 'package:window_manager/window_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    return true;
+  };
 
   if (Platform.isWindows || Platform.isLinux) {
+    await windowManager.ensureInitialized();
     debugPrint('Changing databaseFactory to ffi');
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
