@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:my_ai_gateway/services/database.dart';
 import 'package:my_ai_gateway/theme.dart';
 
 class ThemeNotifier extends ChangeNotifier {
@@ -29,15 +29,13 @@ class ThemeNotifier extends ChangeNotifier {
   }
 
   void _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    _isDarkMode = prefs.getBool('isDarkMode') ?? false;
+    _isDarkMode = await DatabaseService.instance.getConfig("is_dark_mode") == "1";
     notifyListeners();
   }
 
   void toggleTheme() async {
     _isDarkMode = !_isDarkMode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isDarkMode', _isDarkMode);
+    await DatabaseService.instance.setConfig("is_dark_mode", _isDarkMode.toString());
     notifyListeners();
   }
 }

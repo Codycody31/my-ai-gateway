@@ -1,0 +1,33 @@
+# Maintainer: Insidious Fiddler <aur[at]codycody31[dot]dev>
+pkgname=myaigateway-git
+pkgver=2024123
+pkgrel=1
+pkgdesc=""
+arch=('x86_64')
+url="https://github.com/Codycody31/my-ai-gateway.git"
+license=('MIT')
+provides=(myaigateway)
+conflicts=(myaigateway)
+source=("${pkgname}-${pkgver}::git+https://github.com/Codycody31/my-ai-gateway.git" "myaigateway.desktop")
+sha256sums=('SKIP' 'SKIP')
+
+prepare() {
+    cd "$srcdir/$pkgname-$pkgver"
+    flutter pub get
+}
+
+build() {
+    cd "$srcdir/$pkgname-$pkgver"
+    flutter build linux --release
+}
+
+package() {
+    cd "$srcdir/$pkgname-$pkgver"
+
+    install -dm755 "${pkgdir}/opt/"
+    cp -r build/linux/x64/release/bundle "${pkgdir}/opt/myaigateway"
+    install -dm755 "${pkgdir}/usr/bin"
+    ln -s "/opt/myaigateway/my_ai_gateway" "${pkgdir}/usr/bin/myaigateway"
+    install -Dm644 "$srcdir/myaigateway.desktop" "$pkgdir/usr/share/applications/myaigateway.desktop"
+    install -Dm644 "assets/icon/icon.png" "$pkgdir/usr/share/pixmaps/myaigateway.png"
+}

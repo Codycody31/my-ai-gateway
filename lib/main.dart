@@ -45,9 +45,9 @@ class MyAIGatewayApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'My AI Gateway',
-      theme: themeNotifier.lightTheme,
-      darkTheme: themeNotifier.darkTheme,
-      themeMode: themeNotifier.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      theme: themeNotifier.darkTheme,
+      // darkTheme: themeNotifier.darkTheme,
+      // themeMode: themeNotifier.isDarkMode ? ThemeMode.dark : ThemeMode.light,
       home: const ChatPage(),
     );
   }

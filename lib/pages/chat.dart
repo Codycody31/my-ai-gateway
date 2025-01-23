@@ -225,6 +225,10 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _switchChat(int id) async {
+    if (_selectedChat == id) {
+      return;
+    }
+
     setState(() {
       _loading = true;
     });
@@ -693,6 +697,7 @@ class _ChatPageState extends State<ChatPage> {
             ...thoughts.map((thought) => CollapsibleThought(thought: thought)),
             MarkdownBody(
               data: cleanedContent,
+              selectable: true,
               onTapLink: (text, href, title) {
                 debugPrint('Link clicked: $href');
               },

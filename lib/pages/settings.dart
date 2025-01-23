@@ -106,12 +106,12 @@ class _SettingsPageState extends State<SettingsPage> {
           SettingsSection(
             title: const Text('General'),
             tiles: [
-              SettingsTile.switchTile(
-                initialValue: themeNotifier.isDarkMode,
-                onToggle: (value) => themeNotifier.toggleTheme(),
-                leading: const Icon(Icons.dark_mode),
-                title: const Text('Dark Mode'),
-              ),
+              // SettingsTile.switchTile(
+              //   initialValue: themeNotifier.isDarkMode,
+              //   onToggle: (value) => themeNotifier.toggleTheme(),
+              //   leading: const Icon(Icons.dark_mode),
+              //   title: const Text('Dark Mode'),
+              // ),
               SettingsTile.switchTile(
                 initialValue: _streamOutput == 1,
                 leading: const Icon(Icons.notifications),
