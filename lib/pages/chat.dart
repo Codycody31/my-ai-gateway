@@ -11,6 +11,8 @@ import 'package:my_ai_gateway/models/chat.dart';
 import 'package:my_ai_gateway/services/database.dart';
 import 'package:my_ai_gateway/widgets/collapsible_thought.dart';
 import 'package:my_ai_gateway/pages/model_details.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:markdown/markdown.dart' as md;
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -50,15 +52,16 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
 
-    // Scroll controller listener for showing the scroll-down button
+    // Scroll controller listener for detecting any scroll action
     _scrollController.addListener(() {
-      if (_scrollController.position.atEdge) {
-        final isAtBottom = _scrollController.position.pixels ==
-            _scrollController.position.maxScrollExtent;
-        setState(() {
-          _showScrollDownButton = !isAtBottom;
-        });
-      }
+      // Show the scroll-down button when the user is not at the bottom
+      final isAtBottom = _scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent;
+
+      // Show the button if not at the bottom
+      setState(() {
+        _showScrollDownButton = !isAtBottom;
+      });
     });
 
     _refetchKeyData();
@@ -198,6 +201,7 @@ class _ChatPageState extends State<ChatPage> {
       _selectedProvider = provider?.id ?? 0;
       _selectedModel = provider?.defaultModel ?? "";
       _messages = [];
+      _showScrollDownButton = false;
     });
 
     debugPrint('Chat closed');
@@ -695,18 +699,35 @@ class _ChatPageState extends State<ChatPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ...thoughts.map((thought) => CollapsibleThought(thought: thought)),
-            MarkdownBody(
-              data: cleanedContent,
-              selectable: true,
-              onTapLink: (text, href, title) {
-                debugPrint('Link clicked: $href');
-              },
-              styleSheet: MarkdownStyleSheet(
-                p: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface,
+            SelectionArea(
+              child: MarkdownBody(
+                data: cleanedContent,
+                onTapLink: (text, href, title) async {
+                  if (href != null) {
+                    final uri = Uri.parse(href);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
+                  }
+                },
+                extensionSet: md.ExtensionSet(
+                  md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+                  <md.InlineSyntax>[
+                    md.EmojiSyntax(),
+                    ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes
+                  ],
+                ),
+                styleSheet: MarkdownStyleSheet(
+                  p: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                  a: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: Theme.of(context).colorScheme.secondary,
+                        decoration: TextDecoration.underline,
+                      ),
                 ),
               ),
-            ),
+            )
           ],
         ),
       ),
