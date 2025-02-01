@@ -858,10 +858,10 @@ class _ChatPageState extends State<ChatPage> {
                   }),
                 );
               } else if (value.contains('provider_')) {
-                final providerId = int.parse(value.split('_')[1]);
+                final providerId = int.parse(value.split('provider_')[1]);
                 _switchProvider(providerId);
               } else if (value.contains('model_')) {
-                final model = value.split('_')[1];
+                final model = value.split('model_')[1];
                 _switchModel(model);
               } else if (value == 'Refresh') {
                 _refetchModels();
