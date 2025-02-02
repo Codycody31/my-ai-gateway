@@ -6,6 +6,7 @@ class Provider {
   final String type;
   final String apiType;
   final String? defaultModel;
+  final String? summaryModel;
 
   Provider({
     required this.id,
@@ -15,6 +16,7 @@ class Provider {
     required this.type,
     required this.apiType,
     this.defaultModel,
+    this.summaryModel,
   });
 
   Map<String, dynamic> toMap() {
@@ -26,6 +28,7 @@ class Provider {
       'type': type,
       'api_type': apiType,
       'default_model': defaultModel,
+      'summary_model': summaryModel,
     };
   }
 
@@ -38,6 +41,7 @@ class Provider {
       type: json['type'] as String,
       apiType: json['api_type'] as String,
       defaultModel: json['default_model'] as String?,
+      summaryModel: json['summary_model'] as String?,
     );
   }
 
@@ -49,6 +53,7 @@ class Provider {
     String? type,
     String? apiType,
     String? defaultModel,
+    String? summaryModel,
   }) {
     return Provider(
       id: id ?? this.id,
@@ -58,6 +63,7 @@ class Provider {
       type: type ?? this.type,
       apiType: apiType ?? this.apiType,
       defaultModel: defaultModel ?? this.defaultModel,
+      summaryModel: summaryModel ?? this.summaryModel,
     );
   }
 }

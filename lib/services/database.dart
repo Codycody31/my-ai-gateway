@@ -30,6 +30,11 @@ class DatabaseService {
     5: 'ALTER TABLE chats ADD COLUMN last_active_at TEXT DEFAULT NULL;',
     6: 'UPDATE chats SET last_active_at = created_at;',
     7: 'ALTER TABLE chats ADD COLUMN hidden INTEGER DEFAULT 0;',
+    8: 'ALTER TABLE providers ADD COLUMN summaryModel TEXT DEFAULT NULL;',
+    9: 'ALTER TABLE providers RENAME TO providers_old;',
+    10: 'CREATE TABLE providers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, url TEXT, auth_token TEXT, type TEXT, api_type TEXT, default_model TEXT, summary_model TEXT);',
+    11: 'INSERT INTO providers (id, name, url, auth_token, type, api_type, default_model, summary_model) SELECT id, name, url, auth_token, type, api_type, default_model, summaryModel FROM providers_old;',
+    12: 'DROP TABLE providers_old;',
   };
 
   Future<Database> initDatabase(String filePath) async {

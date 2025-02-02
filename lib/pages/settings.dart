@@ -410,6 +410,7 @@ class _SettingsPageState extends State<SettingsPage> {
     String selectedType = provider.type;
     String selectedApiType = provider.apiType;
     String? selectedModel = provider.defaultModel;
+    String? selectedSummaryModel = provider.summaryModel;
     List<String> models = [];
 
     // Fetch models for the provider if the URL is valid
@@ -477,6 +478,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         authToken: authTokenController.text,
                         type: selectedType,
                         defaultModel: selectedModel,
+                        summaryModel: selectedSummaryModel,
                       );
                       Navigator.pop(context, updatedProvider);
                     },
@@ -589,6 +591,52 @@ class _SettingsPageState extends State<SettingsPage> {
                             const Text(
                               'Enter API URL to fetch models',
                               style: TextStyle(color: Colors.red),
+                            ),
+                          if (models.isNotEmpty)
+                            SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.8,
+                              child: DropdownButtonFormField<String>(
+                                value: models.contains(selectedSummaryModel)
+                                    ? selectedSummaryModel
+                                    : null,
+                                isExpanded: true,
+                                items: models.map((model) {
+                                  return DropdownMenuItem(
+                                    value: model,
+                                    child: Text(
+                                      model,
+                                      overflow: TextOverflow.ellipsis,
+                                      softWrap: true,
+                                      maxLines: 2,
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) => selectedSummaryModel = value,
+                                decoration: const InputDecoration(
+                                    labelText: 'Summarization Model'),
+                                selectedItemBuilder: (BuildContext context) {
+                                  return models.map((model) {
+                                    return Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        model,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: true,
+                                        maxLines: 1,
+                                      ),
+                                    );
+                                  }).toList();
+                                },
+                              ),
+                            ),
+                          if (selectedSummaryModel != null &&
+                              !models.contains(selectedSummaryModel))
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                'Warning: The selected summary model "$selectedSummaryModel" no longer exists.',
+                                style: const TextStyle(color: Colors.red),
+                              ),
                             ),
                         ],
                       ),

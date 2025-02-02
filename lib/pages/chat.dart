@@ -590,49 +590,25 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<String?> _summarizeChat(int chatId) async {
     try {
-      final messages =
-          await DatabaseService.instance.getMessagesByChatId(chatId);
+      final chat = await DatabaseService.instance.getChatById(chatId);
+      if (chat == null) return null;
 
-      if (messages.isEmpty) {
+      final provider = await DatabaseService.instance.getProviderById(chat.providerId);
+      if (provider == null) return null;
+
+      final summaryModel = provider.summaryModel ?? provider.defaultModel;
+      if (summaryModel == null || summaryModel.isEmpty) {
+        debugPrint('No summarization model set for provider ${provider.name}');
         return null;
       }
 
-      // If the number of messages is greater than 2, prompt the user that this task may take a while
-      // and ask if they would like to proceed
-      if (messages.length > 2) {
-        final shouldProceed = await showDialog<bool>(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: const Text('Summarize Chat'),
-              content: const Text(
-                  'Summarizing a chat with multiple messages may take a while. Do you want to proceed?'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context, true);
-                  },
-                  child: const Text('Yes'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context, false);
-                  },
-                  child: const Text('No'),
-                ),
-              ],
-            );
-          },
-        );
+      final messages = await DatabaseService.instance.getMessagesByChatId(chatId);
+      if (messages.isEmpty) return null;
 
-        if (shouldProceed != true) {
-          return null;
-        }
-      }
+      debugPrint('Summarizing chat $chatId using model: $summaryModel');
 
-      // Send the prompt to the AI
       final response = await llmApi.fetchCompletions(
-        _selectedModel,
+        summaryModel,
         [
           ...messages,
           Message(
@@ -643,7 +619,8 @@ class _ChatPageState extends State<ChatPage> {
               modelName: "",
               createdAt: "",
               content:
-                  "Summarize the following chat in the least amount of words possible. Use a maximum of 10 words, do not use any styling/markdown, or any other formatting other than the words needed. Only output the chat title, nothing else.")
+              "Summarize the following chat in the least amount of words possible. Use a maximum of 10 words, do not use any styling/markdown, or any other formatting other than the words needed. Only output the chat title, nothing else."
+          )
         ],
       );
 
@@ -653,6 +630,73 @@ class _ChatPageState extends State<ChatPage> {
       return null;
     }
   }
+
+
+  // Future<String?> _summarizeChat(int chatId) async {
+  //   try {
+  //     final messages =
+  //         await DatabaseService.instance.getMessagesByChatId(chatId);
+  //
+  //     if (messages.isEmpty) {
+  //       return null;
+  //     }
+  //
+  //     // If the number of messages is greater than 2, prompt the user that this task may take a while
+  //     // and ask if they would like to proceed
+  //     if (messages.length > 2) {
+  //       final shouldProceed = await showDialog<bool>(
+  //         context: context,
+  //         builder: (context) {
+  //           return AlertDialog(
+  //             title: const Text('Summarize Chat'),
+  //             content: const Text(
+  //                 'Summarizing a chat with multiple messages may take a while. Do you want to proceed?'),
+  //             actions: [
+  //               TextButton(
+  //                 onPressed: () {
+  //                   Navigator.pop(context, true);
+  //                 },
+  //                 child: const Text('Yes'),
+  //               ),
+  //               TextButton(
+  //                 onPressed: () {
+  //                   Navigator.pop(context, false);
+  //                 },
+  //                 child: const Text('No'),
+  //               ),
+  //             ],
+  //           );
+  //         },
+  //       );
+  //
+  //       if (shouldProceed != true) {
+  //         return null;
+  //       }
+  //     }
+  //
+  //     // Send the prompt to the AI
+  //     final response = await llmApi.fetchCompletions(
+  //       _selectedModel,
+  //       [
+  //         ...messages,
+  //         Message(
+  //             id: 0,
+  //             isUser: 1,
+  //             providerId: 0,
+  //             chatId: chatId,
+  //             modelName: "",
+  //             createdAt: "",
+  //             content:
+  //                 "Summarize the following chat in the least amount of words possible. Use a maximum of 10 words, do not use any styling/markdown, or any other formatting other than the words needed. Only output the chat title, nothing else.")
+  //       ],
+  //     );
+  //
+  //     return _removeThinkTags(response.trim());
+  //   } catch (e) {
+  //     debugPrint('Error summarizing chat: $e');
+  //     return null;
+  //   }
+  // }
 
   void _deleteChat(int id) async {
     await DatabaseService.instance.deleteMessagesByChatId(id);
