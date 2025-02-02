@@ -29,6 +29,7 @@ class DatabaseService {
     4: 'CREATE TABLE config (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT UNIQUE, value TEXT);',
     5: 'ALTER TABLE chats ADD COLUMN last_active_at TEXT DEFAULT NULL;',
     6: 'UPDATE chats SET last_active_at = created_at;',
+    7: 'ALTER TABLE chats ADD COLUMN hidden INTEGER DEFAULT 0;',
   };
 
   Future<Database> initDatabase(String filePath) async {
@@ -120,16 +121,16 @@ class DatabaseService {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<List<Chat>> readAllChats() async {
+  Future<List<Chat>> readAllChats(bool showHiddenChats) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps =
-    await db.query('chats', orderBy: 'last_active_at DESC');
+    final List<Map<String, dynamic>> maps = await db.query('chats',
+        where: showHiddenChats ? null : 'hidden = 0',
+        orderBy: 'last_active_at DESC');
 
     return List.generate(maps.length, (i) {
       return Chat.fromJson(maps[i]);
     });
   }
-
 
   // Get chat by ID
   Future<Chat?> getChatById(int id) async {
@@ -257,6 +258,25 @@ class DatabaseService {
     );
   }
 
+  Future<void> hideChat(int chatId) async {
+    final db = await database;
+    await db.update(
+      'chats',
+      {'hidden': 1},
+      where: 'id = ?',
+      whereArgs: [chatId],
+    );
+  }
+
+  Future<void> unhideChat(int chatId) async {
+    final db = await database;
+    await db.update(
+      'chats',
+      {'hidden': 0},
+      where: 'id = ?',
+      whereArgs: [chatId],
+    );
+  }
 
   // Reset the entire database
   Future<void> resetDatabase() async {

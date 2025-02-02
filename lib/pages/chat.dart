@@ -38,15 +38,17 @@ class _ChatPageState extends State<ChatPage> {
     "What are the latest tech trends?",
   ];
 
+  final ScrollController _scrollController = ScrollController();
+
   int _selectedChat = 0;
   int _selectedProvider = 0;
   String _selectedModel = "";
   bool _loading = false;
   bool _sendingMessage = false;
-  final ScrollController _scrollController = ScrollController();
   bool _showScrollDownButton = false;
   bool _showProviderModelInfo = false;
   bool _formatModelNames = false;
+  bool _showHiddenChats = false;
 
   ApiService llmApi = ApiService(apiUrl: '', authToken: "", apiType: "");
 
@@ -80,7 +82,7 @@ class _ChatPageState extends State<ChatPage> {
         debugPrint('Error fetching providers: $e');
       });
 
-// Fetch the last opened chat
+      // Fetch the last opened chat
       DatabaseService.instance.getLastOpenedChat().then((chatId) async {
         if (chatId != null && chatId != 0) {
           debugPrint('Last opened chat found: $chatId');
@@ -103,7 +105,7 @@ class _ChatPageState extends State<ChatPage> {
       });
 
       // Load all chats
-      DatabaseService.instance.readAllChats().then((chats) {
+      DatabaseService.instance.readAllChats(_showHiddenChats).then((chats) {
         setState(() {
           _chats = chats;
         });
@@ -122,9 +124,7 @@ class _ChatPageState extends State<ChatPage> {
         debugPrint('Error fetching config for show_provider_model_info: $e');
       });
 
-      DatabaseService.instance
-          .getConfig('format_model_names')
-          .then((value) {
+      DatabaseService.instance.getConfig('format_model_names').then((value) {
         setState(() {
           _formatModelNames = value == '1';
         });
@@ -722,7 +722,8 @@ class _ChatPageState extends State<ChatPage> {
         final parts = uri.pathSegments;
         if (parts.length >= 2) {
           final modelName = parts.last.split(":")[0]; // Get model name
-          final quantization = parts.last.contains(":") ? "(${parts.last.split(":")[1]})" : "";
+          final quantization =
+              parts.last.contains(":") ? "(${parts.last.split(":")[1]})" : "";
           return "$modelName $quantization";
         }
       }
@@ -925,7 +926,9 @@ class _ChatPageState extends State<ChatPage> {
                 }
               : null,
           child: Text(
-            _selectedModel == "" ? "Select a model" : formatModelName(_selectedModel),
+            _selectedModel == ""
+                ? "Select a model"
+                : formatModelName(_selectedModel),
             style: theme.textTheme.titleLarge?.copyWith(
               color: colorScheme.onPrimary,
             ),
@@ -1039,13 +1042,18 @@ class _ChatPageState extends State<ChatPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                        formatModelName(model),
-                        overflow: TextOverflow.ellipsis, // Prevents overflow
-                        maxLines: 1, // Keeps it single-line
-                        softWrap: false, // Avoids unnecessary wrapping
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12),
-                      ),
-
+                          formatModelName(model),
+                          overflow: TextOverflow.ellipsis,
+                          // Prevents overflow
+                          maxLines: 1,
+                          // Keeps it single-line
+                          softWrap: false,
+                          // Avoids unnecessary wrapping
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(fontSize: 12),
+                        ),
                       ),
                     ],
                   ),
@@ -1161,20 +1169,9 @@ class _ChatPageState extends State<ChatPage> {
       drawer: Drawer(
         child: Column(
           children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: colorScheme.primary),
-              child: Center(
-                child: Text(
-                  'My AI Gateway',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    color: colorScheme.onPrimary,
-                  ),
-                ),
-              ),
-            ),
             Expanded(
               child: FutureBuilder<List<Chat>>(
-                future: DatabaseService.instance.readAllChats(),
+                future: DatabaseService.instance.readAllChats(_showHiddenChats),
                 // Fetch sorted chats
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
@@ -1221,6 +1218,23 @@ class _ChatPageState extends State<ChatPage> {
                                             Navigator.pop(context, 'rename'),
                                       ),
                                       ListTile(
+                                        leading: chat.hidden
+                                            ? const Icon(Icons.visibility)
+                                            : const Icon(Icons.visibility_off),
+                                        title: Text(
+                                            chat.hidden ? 'Unhide' : 'Hide'),
+                                        onTap: () {
+                                          chat.hidden
+                                              ? DatabaseService.instance
+                                                  .unhideChat(chat.id)
+                                              : DatabaseService.instance
+                                                  .hideChat(chat.id);
+
+                                          _refetchKeyData();
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                      ListTile(
                                         leading: const Icon(Icons.delete),
                                         title: const Text('Delete'),
                                         onTap: () =>
@@ -1239,7 +1253,7 @@ class _ChatPageState extends State<ChatPage> {
                             },
                             child: ListTile(
                               leading: Icon(
-                                Icons.chat,
+                                chat.hidden ? Icons.visibility_off : Icons.chat,
                                 color: isSelected
                                     ? Theme.of(context).colorScheme.onPrimary
                                     : Theme.of(context).colorScheme.onSurface,
@@ -1301,7 +1315,6 @@ class _ChatPageState extends State<ChatPage> {
                 },
               ),
             ),
-
             ListTile(
               leading: const Icon(Icons.add),
               title: const Text("Create New Chat"),
@@ -1311,13 +1324,53 @@ class _ChatPageState extends State<ChatPage> {
               }, // Adds a new chat
             ),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text("Settings"),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer
-                _navigateToSettings();
-              },
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Show Hidden Chats Button
+                  TextButton.icon(
+                    icon: Icon(
+                      _showHiddenChats
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    label: Text(
+                      _showHiddenChats ? "Hide Hidden" : "Show Hidden",
+                      style: TextStyle(
+                        fontSize: 14, // Smaller text
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    onPressed: () async {
+                      setState(() {
+                        _showHiddenChats = !_showHiddenChats;
+                      });
+
+                      _refetchKeyData();
+                    },
+                  ),
+
+                  // Settings Button
+                  TextButton.icon(
+                    icon: Icon(
+                      Icons.settings,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    label: Text(
+                      "Settings",
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _navigateToSettings();
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),

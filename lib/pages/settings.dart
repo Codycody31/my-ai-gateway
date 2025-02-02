@@ -99,7 +99,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadShowProviderModelInfo() async {
     final showInfo =
-    await DatabaseService.instance.getConfig('show_provider_model_info');
+        await DatabaseService.instance.getConfig('show_provider_model_info');
     setState(() {
       _showProviderModelInfo = showInfo == '1';
     });
@@ -115,7 +115,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadFormatModelNames() async {
     final formatModelNames =
-    await DatabaseService.instance.getConfig('format_model_names');
+        await DatabaseService.instance.getConfig('format_model_names');
     setState(() {
       _formatModelNames = formatModelNames == '1';
     });
@@ -167,7 +167,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 onToggle: (value) => _setFormatModelNames(value),
               ),
-
               SettingsTile(
                 title: const Text('About'),
                 leading: const Icon(Icons.info),
@@ -586,7 +585,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                 style: const TextStyle(color: Colors.red),
                               ),
                             ),
-
                           if (urlController.text.isEmpty && models.isEmpty)
                             const Text(
                               'Enter API URL to fetch models',
