@@ -550,7 +550,6 @@ class _ChatPageState extends State<ChatPage> {
           actions: [
             TextButton(
               onPressed: () async {
-                // Use AI to summarize chat messages
                 final summary = await _summarizeChat(chatId);
                 if (summary != null) {
                   newName = summary;
@@ -567,9 +566,7 @@ class _ChatPageState extends State<ChatPage> {
               child: const Text('Rename'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
           ],
@@ -593,7 +590,8 @@ class _ChatPageState extends State<ChatPage> {
       final chat = await DatabaseService.instance.getChatById(chatId);
       if (chat == null) return null;
 
-      final provider = await DatabaseService.instance.getProviderById(chat.providerId);
+      final provider =
+          await DatabaseService.instance.getProviderById(chat.providerId);
       if (provider == null) return null;
 
       final summaryModel = provider.summaryModel ?? provider.defaultModel;
@@ -602,7 +600,8 @@ class _ChatPageState extends State<ChatPage> {
         return null;
       }
 
-      final messages = await DatabaseService.instance.getMessagesByChatId(chatId);
+      final messages =
+          await DatabaseService.instance.getMessagesByChatId(chatId);
       if (messages.isEmpty) return null;
 
       debugPrint('Summarizing chat $chatId using model: $summaryModel');
@@ -619,8 +618,7 @@ class _ChatPageState extends State<ChatPage> {
               modelName: "",
               createdAt: "",
               content:
-              "Summarize the following chat in the least amount of words possible. Use a maximum of 10 words, do not use any styling/markdown, or any other formatting other than the words needed. Only output the chat title, nothing else."
-          )
+                  "Ignore all previous instructions. The preceding text is a conversation thread that needs a concise but descriptive 3 to 5 word title in natural English so that readers will be able to easily find it again. Do not add any quotation marks or formatting to the title. Respond only with the title text.")
         ],
       );
 
