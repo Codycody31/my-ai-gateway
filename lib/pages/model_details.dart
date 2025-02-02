@@ -45,9 +45,20 @@ class _ModelDetailsPageState extends State<ModelDetailsPage> {
           _loading = false;
         });
       } else {
+        var modelName = widget.modelName;
+        // If hf.co in model name strip it out
+        if (modelName.contains('hf.co')) {
+          modelName = modelName.split('hf.co/').last;
+        }
+
+        // If : in model name strip it out and everything after it
+        if (modelName.contains(':')) {
+          modelName = modelName.split(':').first;
+        }
+
         final response = await http.get(
           Uri.parse(
-            'https://huggingface.co/api/models?search=${widget.modelName}',
+            'https://huggingface.co/api/models?search=$modelName',
           ),
         );
 

@@ -22,6 +22,8 @@ class _SettingsPageState extends State<SettingsPage> {
   List<Provider> _providers = [];
   int _defaultProviderId = 0;
   int _streamOutput = 0;
+  bool _showProviderModelInfo = false;
+  bool _formatModelNames = false;
   final String _githubLink = "https://github.com/codycody31/my-ai-gateway";
 
   PackageInfo _packageInfo = PackageInfo(
@@ -57,6 +59,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadSettings() async {
     await _loadStreamOutput();
     await _loadProviders();
+    await _loadShowProviderModelInfo();
+    await _loadFormatModelNames();
   }
 
   Future<void> _loadStreamOutput() async {
@@ -93,10 +97,40 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Future<void> _loadShowProviderModelInfo() async {
+    final showInfo =
+    await DatabaseService.instance.getConfig('show_provider_model_info');
+    setState(() {
+      _showProviderModelInfo = showInfo == '1';
+    });
+  }
+
+  Future<void> _setShowProviderModelInfo(bool value) async {
+    await DatabaseService.instance
+        .setConfig('show_provider_model_info', value ? '1' : '0');
+    setState(() {
+      _showProviderModelInfo = value;
+    });
+  }
+
+  Future<void> _loadFormatModelNames() async {
+    final formatModelNames =
+    await DatabaseService.instance.getConfig('format_model_names');
+    setState(() {
+      _formatModelNames = formatModelNames == '1';
+    });
+  }
+
+  Future<void> _setFormatModelNames(bool value) async {
+    await DatabaseService.instance
+        .setConfig('format_model_names', value ? '1' : '0');
+    setState(() {
+      _formatModelNames = value;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final themeNotifier = pkg_provider.Provider.of<ThemeNotifier>(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -106,12 +140,6 @@ class _SettingsPageState extends State<SettingsPage> {
           SettingsSection(
             title: const Text('General'),
             tiles: [
-              // SettingsTile.switchTile(
-              //   initialValue: themeNotifier.isDarkMode,
-              //   onToggle: (value) => themeNotifier.toggleTheme(),
-              //   leading: const Icon(Icons.dark_mode),
-              //   title: const Text('Dark Mode'),
-              // ),
               SettingsTile.switchTile(
                 initialValue: _streamOutput == 1,
                 leading: const Icon(Icons.notifications),
@@ -121,6 +149,25 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 onToggle: (value) => _setStreamOutput(value ? 1 : 0),
               ),
+              SettingsTile.switchTile(
+                initialValue: _showProviderModelInfo,
+                leading: const Icon(Icons.visibility),
+                title: const Text('Show Provider & Model Info'),
+                description: const Text(
+                  'Toggle visibility of provider and model info under chat selection.',
+                ),
+                onToggle: (value) => _setShowProviderModelInfo(value),
+              ),
+              SettingsTile.switchTile(
+                initialValue: _formatModelNames,
+                leading: const Icon(Icons.format_textdirection_l_to_r),
+                title: const Text('Format Model Names'),
+                description: const Text(
+                  'Toggle whether to display formatted or raw model names.',
+                ),
+                onToggle: (value) => _setFormatModelNames(value),
+              ),
+
               SettingsTile(
                 title: const Text('About'),
                 leading: const Icon(Icons.info),
@@ -370,7 +417,9 @@ class _SettingsPageState extends State<SettingsPage> {
     Future<List<String>> fetchModels() async {
       if (urlController.text.isNotEmpty) {
         ApiService llmApi = ApiService(
-            apiUrl: urlController.text, authToken: authTokenController.text, apiType: selectedApiType);
+            apiUrl: urlController.text,
+            authToken: authTokenController.text,
+            apiType: selectedApiType);
         List<String> m;
 
         try {
@@ -489,23 +538,22 @@ class _SettingsPageState extends State<SettingsPage> {
                             onChanged: (value) =>
                                 selectedApiType = value ?? 'ollama',
                             decoration:
-                                const InputDecoration(labelText: 'Api Type'),
+                                const InputDecoration(labelText: 'API Type'),
                           ),
                           if (models.isNotEmpty)
                             SizedBox(
-                              width: MediaQuery.of(context).size.width *
-                                  0.8, // Constrain the width
+                              width: MediaQuery.of(context).size.width * 0.8,
                               child: DropdownButtonFormField<String>(
-                                value: selectedModel,
+                                value: models.contains(selectedModel)
+                                    ? selectedModel
+                                    : null,
                                 isExpanded: true,
-                                // Ensures the dropdown expands to fit the screen width
                                 items: models.map((model) {
                                   return DropdownMenuItem(
                                     value: model,
                                     child: Text(
                                       model,
                                       overflow: TextOverflow.ellipsis,
-                                      // Prevents overflow in the dropdown items
                                       softWrap: true,
                                       maxLines: 2,
                                     ),
@@ -521,15 +569,24 @@ class _SettingsPageState extends State<SettingsPage> {
                                       child: Text(
                                         model,
                                         overflow: TextOverflow.ellipsis,
-                                        // Prevents overflow in the value display
                                         softWrap: true,
-                                        maxLines: 1, // Adjust as needed
+                                        maxLines: 1,
                                       ),
                                     );
                                   }).toList();
                                 },
                               ),
                             ),
+                          if (selectedModel != null &&
+                              !models.contains(selectedModel))
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                'Warning: The selected model "$selectedModel" no longer exists.',
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                            ),
+
                           if (urlController.text.isEmpty && models.isEmpty)
                             const Text(
                               'Enter API URL to fetch models',

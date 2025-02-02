@@ -45,6 +45,8 @@ class _ChatPageState extends State<ChatPage> {
   bool _sendingMessage = false;
   final ScrollController _scrollController = ScrollController();
   bool _showScrollDownButton = false;
+  bool _showProviderModelInfo = false;
+  bool _formatModelNames = false;
 
   ApiService llmApi = ApiService(apiUrl: '', authToken: "", apiType: "");
 
@@ -108,6 +110,26 @@ class _ChatPageState extends State<ChatPage> {
         debugPrint('Chats fetched');
       }).catchError((e) {
         debugPrint('Error fetching chats: $e');
+      });
+
+      DatabaseService.instance
+          .getConfig('show_provider_model_info')
+          .then((value) {
+        setState(() {
+          _showProviderModelInfo = value == '1';
+        });
+      }).catchError((e) {
+        debugPrint('Error fetching config for show_provider_model_info: $e');
+      });
+
+      DatabaseService.instance
+          .getConfig('format_model_names')
+          .then((value) {
+        setState(() {
+          _formatModelNames = value == '1';
+        });
+      }).catchError((e) {
+        debugPrint('Error fetching config for format_model_names: $e');
       });
     } catch (e) {
       debugPrint('Error re-fetching data: $e');
@@ -209,12 +231,12 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _createNewChat() async {
     final chat = Chat(
-      id: 0,
-      name: 'New Chat ${_chats.length + 1}',
-      providerId: _selectedProvider,
-      modelName: _selectedModel,
-      createdAt: DateTime.now().toString(),
-    );
+        id: 0,
+        name: 'New Chat ${_chats.length + 1}',
+        providerId: _selectedProvider,
+        modelName: _selectedModel,
+        createdAt: DateTime.now().toString(),
+        lastActiveAt: DateTime.now().toString());
 
     final chatId = await DatabaseService.instance.createChat(chat);
 
@@ -411,6 +433,9 @@ class _ChatPageState extends State<ChatPage> {
               _sendingMessage = false;
             });
 
+            // Update last_active_at
+            await DatabaseService.instance.updateChatLastActive(_selectedChat);
+
             if (firstTime) {
               debugPrint('Summarizing chat $_selectedChat');
               var summary = await _summarizeChat(_selectedChat);
@@ -483,6 +508,9 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           _sendingMessage = false;
         });
+
+        // Update last_active_at
+        await DatabaseService.instance.updateChatLastActive(_selectedChat);
 
         if (firstTime) {
           debugPrint('Summarizing chat $_selectedChat');
@@ -643,6 +671,74 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     debugPrint('Chat $id deleted');
+  }
+
+  Map<String, List<Chat>> _categorizeChats(List<Chat> chats) {
+    final now = DateTime.now();
+    final today = <Chat>[];
+    final yesterday = <Chat>[];
+    final thisWeek = <Chat>[];
+    final thisMonth = <Chat>[];
+    final aWhileAgo = <Chat>[];
+
+    for (var chat in chats) {
+      final lastActive = DateTime.tryParse(chat.lastActiveAt ?? chat.createdAt);
+      if (lastActive == null) continue;
+
+      final difference = now.difference(lastActive);
+
+      if (difference.inDays == 0) {
+        today.add(chat);
+      } else if (difference.inDays == 1) {
+        yesterday.add(chat);
+      } else if (difference.inDays <= 7) {
+        thisWeek.add(chat);
+      } else if (difference.inDays <= 30) {
+        thisMonth.add(chat);
+      } else {
+        aWhileAgo.add(chat);
+      }
+    }
+
+    return {
+      'Today': today,
+      'Yesterday': yesterday,
+      'This Week': thisWeek,
+      'This Month': thisMonth,
+      'A While Ago': aWhileAgo,
+    };
+  }
+
+  String formatModelName(String model) {
+    if (!_formatModelNames) {
+      return model;
+    }
+
+    try {
+      final uri = Uri.parse(model);
+
+      // Handle Hugging Face models (hf.co)
+      if (uri.host.contains("hf.co")) {
+        final parts = uri.pathSegments;
+        if (parts.length >= 2) {
+          final modelName = parts.last.split(":")[0]; // Get model name
+          final quantization = parts.last.contains(":") ? "(${parts.last.split(":")[1]})" : "";
+          return "$modelName $quantization";
+        }
+      }
+    } catch (e) {
+      // Do nothing, just return the model, as it is not a URL
+    }
+
+    if (model.contains(":")) {
+      final modelParts = model.split(":");
+      final formattedName = modelParts[0].split("/").last; // Extract last part
+      final quantization = modelParts.length > 1 ? "(${modelParts[1]})" : "";
+
+      return "$formattedName $quantization";
+    }
+
+    return model;
   }
 
   List<String> _extractThoughts(String content) {
@@ -807,6 +903,7 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final categorizedChats = _categorizeChats(_chats);
 
     return Scaffold(
       appBar: AppBar(
@@ -828,7 +925,7 @@ class _ChatPageState extends State<ChatPage> {
                 }
               : null,
           child: Text(
-            _selectedModel == "" ? "Select a model" : _selectedModel,
+            _selectedModel == "" ? "Select a model" : formatModelName(_selectedModel),
             style: theme.textTheme.titleLarge?.copyWith(
               color: colorScheme.onPrimary,
             ),
@@ -942,15 +1039,13 @@ class _ChatPageState extends State<ChatPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          model,
-                          softWrap: true,
-                          // Enable text wrapping
-                          maxLines: 2,
-                          // Limit to 2 lines (optional)
-                          overflow: TextOverflow.visible,
-                          // Allow full text display
-                          style: theme.textTheme.bodyMedium,
-                        ),
+                        formatModelName(model),
+                        overflow: TextOverflow.ellipsis, // Prevents overflow
+                        maxLines: 1, // Keeps it single-line
+                        softWrap: false, // Avoids unnecessary wrapping
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12),
+                      ),
+
                       ),
                     ],
                   ),
@@ -1078,83 +1173,135 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                itemCount: _chats.length,
-                itemBuilder: (context, index) {
-                  final chat = _chats[index];
-                  final isSelected = chat.id == _selectedChat;
+              child: FutureBuilder<List<Chat>>(
+                future: DatabaseService.instance.readAllChats(),
+                // Fetch sorted chats
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                  return GestureDetector(
-                    onLongPress: () async {
-                      final selectedOption = await showModalBottomSheet<String>(
-                        context: context,
-                        builder: (context) {
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ListTile(
-                                leading: const Icon(Icons.edit),
-                                title: const Text('Rename'),
-                                onTap: () {
-                                  Navigator.pop(context, 'rename');
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.delete),
-                                title: const Text('Delete'),
-                                onTap: () {
-                                  Navigator.pop(context, 'delete');
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      );
+                  final categorizedChats = _categorizeChats(snapshot.data!);
 
-                      if (selectedOption == 'rename') {
-                        _renameChat(context, _chats[index].id);
-                      } else if (selectedOption == 'delete') {
-                        _deleteChat(_chats[index].id);
-                      }
-                    },
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.chat,
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context).colorScheme.onSurface,
-                      ),
-                      title: Text(
-                        chat.name,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
+                  return ListView(
+                    children: categorizedChats.entries.expand<Widget>((entry) {
+                      if (entry.value.isEmpty) return [];
+
+                      return [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 8.0, horizontal: 16.0),
+                          child: Text(
+                            entry.key, // "Today", "Yesterday", etc.
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade600,
+                                ),
+                          ),
                         ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Provider: ${_providers.firstWhere((provider) => provider.id == chat.providerId, orElse: () => Provider(id: 0, name: 'Unknown', url: '', authToken: '', type: 'unknown', apiType: 'unknown')).name}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          Text(
-                            'Model: ${chat.modelName.isEmpty ? "None" : chat.modelName}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                      tileColor: isSelected
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : Colors.transparent,
-                      onTap: () {
-                        _switchChat(chat.id);
-                        Navigator.pop(context);
-                      },
-                    ),
+                        ...entry.value.map((chat) {
+                          final isSelected = chat.id == _selectedChat;
+
+                          return GestureDetector(
+                            onLongPress: () async {
+                              final selectedOption =
+                                  await showModalBottomSheet<String>(
+                                context: context,
+                                builder: (context) {
+                                  return Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ListTile(
+                                        leading: const Icon(Icons.edit),
+                                        title: const Text('Rename'),
+                                        onTap: () =>
+                                            Navigator.pop(context, 'rename'),
+                                      ),
+                                      ListTile(
+                                        leading: const Icon(Icons.delete),
+                                        title: const Text('Delete'),
+                                        onTap: () =>
+                                            Navigator.pop(context, 'delete'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+
+                              if (selectedOption == 'rename') {
+                                _renameChat(context, chat.id);
+                              } else if (selectedOption == 'delete') {
+                                _deleteChat(chat.id);
+                              }
+                            },
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.chat,
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.onPrimary
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
+                              title: Text(
+                                chat.name,
+                                style: TextStyle(
+                                  fontSize: 14, // Smaller title
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (_showProviderModelInfo) ...[
+                                    Text(
+                                      'Provider: ${_providers.firstWhere(
+                                            (provider) =>
+                                                provider.id == chat.providerId,
+                                            orElse: () => Provider(
+                                                id: 0,
+                                                name: 'Unknown',
+                                                url: '',
+                                                authToken: '',
+                                                type: 'unknown',
+                                                apiType: 'unknown'),
+                                          ).name}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(fontSize: 12),
+                                    ),
+                                    Text(
+                                      'Model: ${chat.modelName.isEmpty ? "None" : formatModelName(chat.modelName)}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(fontSize: 12),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              tileColor: isSelected
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer
+                                  : Colors.transparent,
+                              onTap: () {
+                                _switchChat(chat.id);
+                                Navigator.pop(context);
+                              },
+                            ),
+                          );
+                        }),
+                      ];
+                    }).toList(),
                   );
                 },
               ),
             ),
+
             ListTile(
               leading: const Icon(Icons.add),
               title: const Text("Create New Chat"),

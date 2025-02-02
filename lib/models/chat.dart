@@ -4,8 +4,9 @@ class Chat {
   int providerId;
   String modelName;
   final String createdAt;
+  String lastActiveAt;
 
-  Chat({required this.id, required this.name, required this.providerId, required this.modelName, required this.createdAt});
+  Chat({required this.id, required this.name, required this.providerId, required this.modelName, required this.createdAt, required this.lastActiveAt});
 
   // Factory constructor to create a Model instance from JSON
   factory Chat.fromJson(Map<String, dynamic> json) {
@@ -15,6 +16,7 @@ class Chat {
       providerId: json['provider_id'] as int,
       modelName: json['model_name'] as String,
       createdAt: json['created_at'] as String,
+        lastActiveAt: json['last_active_at'] as String,
     );
   }
 
@@ -25,6 +27,7 @@ class Chat {
     'provider_id': providerId,
     'model_name': modelName,
     'created_at': createdAt,
+    'last_active_at': lastActiveAt,
   };
 
   // Serialize the Model instance to Map
@@ -35,6 +38,7 @@ class Chat {
       'provider_id': providerId,
       'model_name': modelName,
       'created_at': createdAt,
+      'last_active_at': lastActiveAt,
     };
   }
 }

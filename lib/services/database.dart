@@ -27,6 +27,8 @@ class DatabaseService {
     2: 'CREATE TABLE chats (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, provider_id INTEGER, model_name TEXT, created_at TEXT);',
     3: 'CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, is_user INTEGER, provider_id INTEGER, model_name TEXT, created_at TEXT, content TEXT);',
     4: 'CREATE TABLE config (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT UNIQUE, value TEXT);',
+    5: 'ALTER TABLE chats ADD COLUMN last_active_at TEXT DEFAULT NULL;',
+    6: 'UPDATE chats SET last_active_at = created_at;',
   };
 
   Future<Database> initDatabase(String filePath) async {
@@ -118,12 +120,16 @@ class DatabaseService {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  // Read all chats
   Future<List<Chat>> readAllChats() async {
-    final db = await instance.database;
-    final result = await db.query('chats');
-    return result.map((json) => Chat.fromJson(json)).toList();
+    final db = await database;
+    final List<Map<String, dynamic>> maps =
+    await db.query('chats', orderBy: 'last_active_at DESC');
+
+    return List.generate(maps.length, (i) {
+      return Chat.fromJson(maps[i]);
+    });
   }
+
 
   // Get chat by ID
   Future<Chat?> getChatById(int id) async {
@@ -240,6 +246,17 @@ class DatabaseService {
     final chatId = await getConfig('last_opened_chat');
     return chatId != null ? int.parse(chatId) : null;
   }
+
+  Future<void> updateChatLastActive(int chatId) async {
+    final db = await database;
+    await db.update(
+      'chats',
+      {'last_active_at': DateTime.now().toString()},
+      where: 'id = ?',
+      whereArgs: [chatId],
+    );
+  }
+
 
   // Reset the entire database
   Future<void> resetDatabase() async {
