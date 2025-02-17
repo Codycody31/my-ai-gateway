@@ -1,99 +1,63 @@
 # My AI Gateway
 
-**My AI Gateway** is a robust and customizable Flutter-based application designed to interact with
-various AI model providers such as OpenAI and Hugging Face. It serves as a user-friendly gateway to
-access, manage, and utilize AI models for a wide range of applications, including research,
-development, and production environments.
-
----
+My AI Gateway is a Flutter-based application that serves as a gateway to interact with various AI models from providers like OpenAI, Hugging Face, and Ollama. The app allows users to chat with AI models, manage providers, and customize settings for a personalized experience.
 
 ## Features
 
-- Fetch and display AI model details from providers (e.g., OpenAI, Hugging Face).
-- Support for multiple providers with customizable configurations.
-- Set default providers and models for streamlined access.
-- Retrieve and display model-specific details based on the provider.
-- Open links to model documentation or public pages directly in a browser.
-- Handle large messages with multiline text input.
+- **Multi-Provider Support**: Seamlessly switch between different AI providers such as OpenAI, Hugging Face, and Ollama.
+- **API Compatibility**: Supports both OpenAI and Ollama-style APIs for flexible integration.
+- **Model Management**: View details of AI models, including descriptions and links to documentation.
+- **Chat Functionality**: Engage in conversations with AI models, with options to stream responses or receive them in full.
+- **Provider Management**: Add, edit, and delete AI providers with ease. Set default providers and models for quick access.
+- **Settings Customization**: Toggle features like streaming output, provider/model info visibility, and model name formatting.
+- **Database Management**: Reset the database and manage chat history with options to hide or delete chats.
+- **Cross-Platform**: Available on Android, iOS, and desktop platforms.
 
----
-
-## Installation
+## Getting Started
 
 ### Prerequisites
 
-- [Flutter SDK](https://flutter.dev/docs/get-started/install)
-- A compatible IDE (e.g., Android Studio, Visual Studio Code)
-- Internet access to fetch model details from providers like Hugging Face or OpenAI.
+- Flutter SDK
+- Dart
+- Android Studio or Xcode for mobile development
+- A valid API key for OpenAI, Hugging Face, or Ollama (if required)
 
-### Steps
+### Installation
 
-1. **Clone the Repository**
+1. Clone the repository:
+
    ```bash
-   git clone https://github.com/codycody31/my-ai-gateway.git
+   git clone https://github.com/yourusername/my-ai-gateway.git
    cd my-ai-gateway
    ```
 
-2. **Install Dependencies**
+2. Install dependencies:
+
    ```bash
    flutter pub get
    ```
 
-3. **Run the Application**
+3. Run the app:
+
    ```bash
    flutter run
    ```
 
----
-
 ## Usage
 
-### Initial Setup
+- **Chat with AI**: Select a provider and model, then start chatting by typing your message and hitting send.
+- **Manage Providers**: Navigate to the settings page to add or edit providers. You can also set a default provider for quick access.
+- **View Model Details**: Tap on a model name in the chat page to view its details and documentation link.
+- **Customize Settings**: Access the settings page to toggle features like streaming output and model name formatting.
 
-1. Navigate to the **Settings** page.
-2. Add your preferred provider (e.g., OpenAI, Hugging Face) by specifying:
-    - Provider name
-    - API URL
-    - Authentication token (if required)
-3. Set a default provider for quick access.
+## Contributing
 
-### Chatting with AI Models
-
-1. Select a model from the dropdown menu.
-2. Enter your prompt or query in the text box.
-3. View real-time or complete responses based on your settings.
-
-### Managing Providers
-
-- Use the **Providers** section in the settings to add, edit, or remove providers.
-
----
-
-## Contributions
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch for your feature or bugfix.
-3. Submit a pull request with detailed descriptions of your changes.
-
----
+Contributions are welcome! Please fork the repository and submit a pull request for any improvements or bug fixes.
 
 ## License
 
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
+## Contact
 
-## Support
-
-For issues or feature requests, please open an issue
-on [GitHub](https://github.com/codycody31/my-ai-gateway/issues).
-
----
-
-## Acknowledgments
-
-- [Flutter](https://flutter.dev/)
-- [OpenAI](https://platform.openai.com/)
-- [Hugging Face](https://huggingface.co/)
+For any inquiries or support, please contact [your-email@example.com](mailto:your-email@example.com).
